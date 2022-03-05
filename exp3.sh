@@ -1,0 +1,11 @@
+time python main.py --multiprocessing --lambda_rival 0.0
+time python main.py --multiprocessing --lambda_rival 1.0
+time python main.py --multiprocessing --lambda_rival 0.1
+time python main.py --multiprocessing --lambda_rival 0.2
+time python main.py --multiprocessing --lambda_rival 0.3
+time python main.py --multiprocessing --lambda_rival 0.4
+time python main.py --multiprocessing --lambda_rival 0.5
+time python main.py --multiprocessing --lambda_rival 0.6
+time python main.py --multiprocessing --lambda_rival 0.7
+time python main.py --multiprocessing --lambda_rival 0.8
+time python main.py --multiprocessing --lambda_rival 0.9
