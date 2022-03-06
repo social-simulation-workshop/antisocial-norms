@@ -116,9 +116,7 @@ class Plot3DArray:
             self._plot_map(lambda_rival_map, mu, opp, r"Opposing", "opp",
                         figure_size=figure_size, cmap=cmap, exp2=exp2)
 
-        
-        
-
+    
     def _save_fig(self, output_dir, fn):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
