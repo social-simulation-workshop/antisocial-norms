@@ -136,7 +136,7 @@ def replicate(args: argparse.ArgumentParser,
                 lambda_rival, alpha, int(mu),
                 sum(part)/len(part), sum(pro)/len(pro), sum(opp)/len(opp), sum(abst)/len(abst)))
         else:
-            print("lambda {:.1f} alpha N/A mu {:2d} || part: {:.3f}; pro: {:.3f}; opp: {:.3f} abst: {:.3f}".format( \
+            print("lambda {:.2f} alpha N/A mu {:2d} || part: {:.3f}; pro: {:.3f}; opp: {:.3f} abst: {:.3f}".format( \
                 lambda_rival, int(mu),
                 sum(part)/len(part), sum(pro)/len(pro), sum(opp)/len(opp), sum(abst)/len(abst)))
     
