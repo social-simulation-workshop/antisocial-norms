@@ -8,7 +8,6 @@ import os
 from args import ArgsConfig
 
 
-
 class Agent:
     _ids = itertools.count(0)
 

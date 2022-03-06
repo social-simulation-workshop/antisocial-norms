@@ -8,7 +8,8 @@ import pandas as pd
 
 
 class Plot3DArray:
-    PLOT_CONST = 13.24/19.4
+    PLOT_CONST = 13.24/19.4 # the ratio (length/width) of the figure in the paper.
+    
     def __init__(self, output_dir=os.path.join(os.getcwd(), "imgfiles")):
 
         self.output_dir=output_dir
@@ -116,7 +117,7 @@ class Plot3DArray:
             self._plot_map(lambda_rival_map, mu, opp, r"Opposing", "opp",
                         figure_size=figure_size, cmap=cmap, exp2=exp2)
 
-    
+
     def _save_fig(self, output_dir, fn):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
