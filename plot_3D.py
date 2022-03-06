@@ -1,121 +1,115 @@
-import imageio ## to convert to mp4, please also run "pip install imageio-ffmpeg"
 import matplotlib.pyplot as plt
+from matplotlib.ticker import LinearLocator
+from mpl_toolkits.mplot3d.axes3d import Axes3D
+from mpl_toolkits.mplot3d import proj3d
 import numpy as np
 import os
-import datetime
+import pandas as pd
 
 
-class Plot3DArray(object):
-    def __init__(self, filename_prefix="", output_dir="giffiles"):
-        super().__init__()
+class Plot3DArray:
+    PLOT_CONST = 13.24/19.4
+    def __init__(self, output_dir=os.path.join(os.getcwd(), "imgfiles")):
 
-        # use the current time as filename if not specified
-        if filename_prefix:
-            self.filename_prefix = filename_prefix
-        else:
-            self.filename_prefix = "simulation_{}".format(datetime.datetime.now().strftime(r"%m_%d_%H_%M"))
         self.output_dir=output_dir
-
         self.max_digit = 4
         self.plotted_img_paths = []
 
 
-    def plot_map(self, loc_data, adp, price, ties, period, cmap="magma", figure_size=(9, 9)):
+    def _plot_map(self, alpha, mu, z, z_label, z_fn, figure_size, rival, cmap):
         """
-        Param
-        - map -> 3d np.array
-            an 3d numpy array to plot
-        - period -> int
-            current timestep t
-        - cmap:
-            the color set for meshcolor.
-            you can choose the one you like at https://matplotlib.org/stable/tutorials/colors/colormaps.html
+        Resources:
+            - plot_surface() example and old doc:
+                https://matplotlib.org/2.0.2/mpl_toolkits/mplot3d/tutorial.html
+            - cmap: the color set for meshcolor.
+                https://matplotlib.org/stable/tutorials/colors/colormaps.html
         """
-        title = "Period = {}".format(period)
-        output_path = os.path.join(os.getcwd(), self.output_dir, self.filename_prefix)
-        filename = "{}_{}.png".format(self.filename_prefix, period)
+        plt.figure(figsize=(figure_size, figure_size*Plot3DArray.PLOT_CONST), dpi=150)
+        ax = plt.axes(projection="3d")
+        # ax.set_title(r"Rivalness ($\lambda$): "+"{:.1f}".format(rival))
 
-        adopters_loc = loc_data[(adp == 1.0)]
-        adopters_price = price[(adp == 1.0)]
-        others_loc = loc_data[(adp == 0.0)]
-        others_price = price[(adp == 0.0)]
-        _min, _max = np.min(price), np.max(price)
+        # plot surface
+        surf = ax.plot_surface(alpha, mu, z, cmap=cmap,
+                               rstride=1, cstride=1, vmin=-0.2, vmax=1.0,
+                               linewidth=1, edgecolor="black")
+        
+        # set axis
+        ax.set_zlabel(z_label)
+        ax.set_zlim(0.0, 1.0)
+        ax.zaxis.set_major_locator(LinearLocator(5))
+        ax.zaxis.set_major_formatter('{x:.02f}')
 
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
+        ax.set_xlabel(r"Cohensiveness ($\alpha$)")
+        ax.set_xlim(0.0, 1.0)
+        ax.xaxis.set_major_locator(LinearLocator(11))
+        ax.xaxis.set_major_formatter('{x:.01f}')
+        ax.invert_xaxis()
 
-        ax.scatter(adopters_loc[:, 0], adopters_loc[:, 1], adopters_loc[:, 2],
-            c=adopters_price, cmap='Reds', vmin = _min, vmax = _max, marker='^', label="Adopted")
-        ax.scatter(others_loc[:, 0], others_loc[:, 1], others_loc[:, 2],
-            c=others_price, cmap='Reds', vmin = _min, vmax = _max, marker='o', label="Have not adopted")
-        for tie in ties:
-            ax.plot(tie[:, 0], tie[:, 1], tie[:, 2], color="lightgray", alpha=0.3, linewidth=0.5)
-        ax.legend()
-        plt.title(title)
-        self.plotted_img_paths.append(self._save_fig(output_path, filename, period))
+        ax.set_ylabel(r"Incentive ($\mu$)")
+        ax.set_ylim(0.0, 50.0)
+        ax.yaxis.set_major_locator(LinearLocator(11))
+        ax.yaxis.set_major_formatter('{x:0.0f}')
+
+        # set box size
+        x_scale=1
+        y_scale=1
+        z_scale=0.5
+
+        scale = np.diag([x_scale, y_scale, z_scale, 1.0])
+        scale = scale*(1.0/scale.max())
+        scale[3,3] = 1.0
+
+        def short_proj():
+            return np.dot(Axes3D.get_proj(ax), scale)
+
+        ax.get_proj=short_proj
+
+        # adjust camera angle
+        ax.view_init(elev=45.0, azim=335)
+        
+        # adjust padding
+        plt.subplots_adjust(left=0.0, bottom=0.05, right=1.0, top=1.15, wspace=0, hspace=0)
+        self._save_fig(self.output_dir, filename+"_{}.png".format(z_fn))
         plt.close()
-    
 
-    def _save_fig(self, output_path, fn, t):
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-        file_path = os.path.join(output_path, fn)
+
+    def plot_map(self, filename, cmap="gray", figure_size=13):
+        filename_prefix = os.path.splitext(filename)[0]
+        lambda_rival = float(filename_prefix.split("_")[1])
+        
+        # process data
+        file_df = pd.read_csv(filename)
+        file_df.sort_values(by=["alpha", "mu"], ascending=[True, True],
+                            ignore_index=True, inplace=True)
+        alpha = file_df["alpha"].to_numpy().reshape((50, 51))
+        mu = file_df["mu"].to_numpy().reshape((50, 51))
+        part = file_df["participation"].to_numpy().reshape((50, 51))
+        pro = file_df["promote"].to_numpy().reshape((50, 51))
+        opp = file_df["oppose"].to_numpy().reshape((50, 51))
+
+        # draw part
+        self._plot_map(alpha, mu, part, r"Participation", "part",
+                       figure_size=figure_size, rival=lambda_rival, cmap=cmap)
+        self._plot_map(alpha, mu, pro, r"Promoting", "pro",
+                       figure_size=figure_size, rival=lambda_rival, cmap=cmap)
+        self._plot_map(alpha, mu, opp, r"Opposing", "opp",
+                       figure_size=figure_size, rival=lambda_rival, cmap=cmap)
+        
+
+    def _save_fig(self, output_dir, fn):
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        file_path = os.path.join(output_dir, fn)
         plt.savefig(file_path)
-        print("|period={}| figrue saved to {}".format((str(t)+' '*self.max_digit)[:self.max_digit], file_path))
+        print("figrue saved to {}".format(file_path))
         return file_path
 
-    
-    def save_gif(self, fps=30, img_dir=""):
-        filename = "{}.gif".format(self.filename_prefix)
-        file_path = os.path.join(os.getcwd(), self.output_dir, filename)
-        
-        # img paths
-        all_img_paths = self.plotted_img_paths
-        if img_dir:
-            filename_prefix = os.path.split(img_dir)[-1]
-            all_t = sorted([float(os.path.splitext(f)[0].split('_')[-1]) for f in os.listdir(img_dir) if os.path.isfile(os.path.join(img_dir, f))])
-            all_img_paths = [os.path.join(img_dir, "{}_{:.3f}.png".format(filename_prefix, t)) for t in all_t]
-
-        images = [imageio.imread(img_path) for img_path in all_img_paths]
-        imageio.mimsave(file_path, images, duration=1/fps)
-        print("gif saved to {}".format(file_path))
-
-    
-    def save_mp4(self, fps=30, img_dir=""):
-        filename = "{}.mp4".format(self.filename_prefix)
-        file_path = os.path.join(os.getcwd(), self.output_dir, filename)
-
-        # img paths
-        all_img_paths = self.plotted_img_paths
-        all_img_paths = self.plotted_img_paths
-        if img_dir:
-            filename_prefix = os.path.split(img_dir)[-1]
-            all_t = sorted([float(os.path.splitext(f)[0].split('_')[-1]) for f in os.listdir(img_dir) if os.path.isfile(os.path.join(img_dir, f))])
-            all_img_paths = [os.path.join(img_dir, "{}_{:.3f}.png".format(filename_prefix, t)) for t in all_t]
-        
-        writer = imageio.get_writer(file_path, fps=20)
-        for img_path in all_img_paths:
-            writer.append_data(imageio.imread(img_path))
-        writer.close()
-        print("mp4 saved to {}".format(file_path))
 
 
 
 if __name__ == "__main__":
-    filename_prefix = "expset(a)_eta_0.2_theta_0.56_Gamma_0.019"
-    img_dir = os.path.join(os.getcwd(), 'imgfiles', filename_prefix)
-    plotter = Plot3DArray(filename_prefix=filename_prefix)
-    plotter.save_gif(img_dir=img_dir)
-    plotter.save_mp4(img_dir=img_dir)
+    for rival in np.arange(0.0, 1.01, 0.1):
+        filename = "lambda_{:.1f}_rndSeed_1025_nRepli_10.csv".format(rival)
+        plotter = Plot3DArray()
+        plotter.plot_map(filename)
     
-
-    '''
-    # usage example
-    t = 60
-    lots_of_data = np.random.randint(256, size=(t, 128, 128))
-    plotter = Plot2DArray()
-    for i in range(t):
-        plotter.plot_map(lots_of_data[i], i)
-    plotter.save_gif()
-    plotter.save_mp4()
-    '''
