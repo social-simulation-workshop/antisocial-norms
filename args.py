@@ -20,7 +20,7 @@ class ArgsConfig(object):
             help="the rivalness of the incentive.")
 
         # independent variables
-        parser.add_argument("--alpha_low_bound", type=float, default=0.6,
+        parser.add_argument("--alpha_low_bound", type=float, default=0.0,
             help="the var alpha is in the range [low_bound, up_bound) with interval alpha_interval.")
         parser.add_argument("--alpha_up_bound", type=float, default=1.0,
             help="the var alpha is in the range [low_bound, up_bound) with interval alpha_interval.")
