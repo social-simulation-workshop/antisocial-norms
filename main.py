@@ -180,7 +180,7 @@ if __name__ == "__main__":
                 for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
                     args_list.append([args, alpha, mu, args.lambda_rival, log_data])
         else:
-            for lambda_rival in np.arange(args.lambda_rival_low_bound, args.lambda_rival_up_bound, args.lambda_rival_interval):
+            for lambda_rival in np.arange(args.lambda_low_bound, args.lambda_up_bound, args.lambda_interval):
                 for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
                     args_list.append([args, None, mu, lambda_rival, log_data])
         pool = multiprocessing.Pool(n_cpus+2)
