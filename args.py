@@ -34,6 +34,13 @@ class ArgsConfig(object):
         parser.add_argument("--mu_interval", type=float, default=1.0,
             help="the var mu is in the range [low_bound, up_bound) with interval mu_interval.")
 
+        parser.add_argument("--lambda_low_bound", type=float, default=0.0,
+            help="the var lambda is in the range [low_bound, up_bound) with interval lambda_interval.")
+        parser.add_argument("--lambda_up_bound", type=float, default=1.01,
+            help="the var lambda is in the range [low_bound, up_bound) with interval lambda_interval.")
+        parser.add_argument("--lambda_interval", type=float, default=0.02,
+            help="the var lambda is in the range [low_bound, up_bound) with interval lambda_interval.")
+
         # models variables
         parser.add_argument("--n_rounds", type=int, default=10000,
             help="the number of individuals.")
@@ -43,6 +50,8 @@ class ArgsConfig(object):
             help="random seed.")
         parser.add_argument("--multiprocessing", nargs="?", const=True, default=False,
             help="random seed.")
+        parser.add_argument("--exp2", nargs="?", const=True, default=False,
+            help="set on to run experiment 2. if not, run experiment 1.")
         
         self.parser = parser
     

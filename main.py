@@ -6,7 +6,6 @@ import numpy as np
 import os
 
 from args import ArgsConfig
-from plot import PlotLinesHandler
 
 
 
@@ -24,13 +23,23 @@ class Agent:
 class AntiSocialNorms:
 
     def __init__(self, args: argparse.ArgumentParser,
-                 alpha: float, mu: float, verbose=True) -> None:
+                 alpha: float, mu: float, lambda_rival: float, verbose=True) -> None:
         Agent._ids = itertools.count(0)
         self.verbose = verbose
 
         self.args = args
-        self.alpha = alpha
-        self.mu = mu
+
+        # exp1
+        if not self.args.exp2:
+            self.alpha = alpha
+            self.mu = mu
+            self.lambda_rival = lambda_rival
+        
+        # exp2
+        else:
+            self.alpha = np.random.uniform()
+            self.mu = mu
+            self.lambda_rival = lambda_rival
 
         self.ags = [Agent() for _ in range(args.N)]
         self.n = sum([ag.w for ag in self.ags])
@@ -39,13 +48,13 @@ class AntiSocialNorms:
 
     def get_iw(self, n:int):
         ret = self.args.g - self.args.c + \
-              self.mu * (1 - self.args.lambda_rival*n/(n+1))
+              self.mu * (1 - self.lambda_rival*n/(n+1))
         return ret
     
 
     def get_utility(self, ag:Agent, n:int):
         ret = self.args.g*n + \
-              ag.w * (self.args.g - self.args.c + self.mu * (1-self.args.lambda_rival*n/(n+1)))
+              ag.w * (self.args.g - self.args.c + self.mu * (1-self.lambda_rival*n/(n+1)))
         return ret
 
 
@@ -110,10 +119,11 @@ class AntiSocialNorms:
                 'abst': abst}
 
 
-def replicate(args: argparse.ArgumentParser, alpha: float, mu: float) -> dict:
+def replicate(args: argparse.ArgumentParser,
+              alpha: float, mu: float, lambda_rival: float) -> dict:
     part, pro, opp, abst = list(), list(), list(), list()
     for _ in range(args.n_replications):
-        game = AntiSocialNorms(args, alpha=alpha, mu=mu)
+        game = AntiSocialNorms(args, alpha=alpha, mu=mu, lambda_rival=lambda_rival)
         res = game.simulate()
         part.append(res['part'])
         pro.append(res['pro'])
@@ -121,18 +131,24 @@ def replicate(args: argparse.ArgumentParser, alpha: float, mu: float) -> dict:
         abst.append(res['abst'])
     
     if game.verbose:
-        print("lambda {:.1f} alpha {:.2f} mu {} || part: {:.3f}; pro: {:.3f}; opp: {:.3f} abst: {:.3f}".format( \
-            args.lambda_rival, alpha, int(mu),
-            sum(part)/len(part), sum(pro)/len(pro), sum(opp)/len(opp), sum(abst)/len(abst)))
+        if not args.exp2:
+            print("lambda {:.1f} alpha {:.2f} mu {:2d} || part: {:.3f}; pro: {:.3f}; opp: {:.3f} abst: {:.3f}".format( \
+                lambda_rival, alpha, int(mu),
+                sum(part)/len(part), sum(pro)/len(pro), sum(opp)/len(opp), sum(abst)/len(abst)))
+        else:
+            print("lambda {:.1f} alpha N/A mu {:2d} || part: {:.3f}; pro: {:.3f}; opp: {:.3f} abst: {:.3f}".format( \
+                lambda_rival, int(mu),
+                sum(part)/len(part), sum(pro)/len(pro), sum(opp)/len(opp), sum(abst)/len(abst)))
     
     return {'part': sum(part)/len(part),
             'pro': sum(pro)/len(pro),
             'opp': sum(opp)/len(opp)}
 
 
-def catch_data_multiprocessing(args, alpha, mu, log_data):
-    res = replicate(args, alpha, mu)
-    log_data.append([alpha, mu, res["part"], res["pro"], res["opp"]])
+def catch_data_multiprocessing(args, alpha, mu, lambda_rival, log_data):
+    res = replicate(args, alpha, mu, lambda_rival)
+    log_data.append([alpha, mu, lambda_rival,
+                        res["part"], res["pro"], res["opp"]])
 
 
 if __name__ == "__main__":
@@ -140,11 +156,15 @@ if __name__ == "__main__":
     args = parser.get_args()
 
     # csv
-    out_path = os.path.join(os.getcwd(), "lambda_{:.1f}_rndSeed_{}_nRepli_{}.csv".format( \
-                            args.lambda_rival, args.rnd_seed, args.n_replications))
+    if not args.exp2:
+        out_path = os.path.join(os.getcwd(), "lambda_{:.1f}_rndSeed_{}_nRepli_{}.csv".format( \
+                                args.lambda_rival, args.rnd_seed, args.n_replications))
+    else:
+        out_path = os.path.join(os.getcwd(), "exp2_rndSeed_{}_nRepli_{}.csv".format( \
+                                args.rnd_seed, args.n_replications))
     out_file = open(out_path, "w", newline="")
     out_writer = csv.writer(out_file)
-    out_writer.writerow(["alpha", "mu", "participation", "promote", "oppose"])
+    out_writer.writerow(["alpha", "mu", "lambda", "participation", "promote", "oppose"])
 
     # multiprocessing
     if args.multiprocessing:
@@ -155,9 +175,14 @@ if __name__ == "__main__":
         log_data = manager.list()
 
         args_list = list()
-        for alpha in np.arange(args.alpha_low_bound, args.alpha_up_bound, args.alpha_interval):
-            for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
-                args_list.append([args, alpha, mu, log_data])
+        if not args.exp2:
+            for alpha in np.arange(args.alpha_low_bound, args.alpha_up_bound, args.alpha_interval):
+                for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
+                    args_list.append([args, alpha, mu, args.lambda_rival, log_data])
+        else:
+            for lambda_rival in np.arange(args.lambda_rival_low_bound, args.lambda_rival_up_bound, args.lambda_rival_interval):
+                for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
+                    args_list.append([args, None, mu, lambda_rival, log_data])
         pool = multiprocessing.Pool(n_cpus+2)
         pool.starmap(catch_data_multiprocessing, args_list)
 
@@ -166,8 +191,14 @@ if __name__ == "__main__":
 
     # single process
     else:
-        for alpha in np.arange(args.alpha_low_bound, args.alpha_up_bound, args.alpha_interval):
-            for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
-                np.random.seed(args.rnd_seed)
-                res = replicate(args, alpha, mu)
-                out_writer.writerow([alpha, mu, res["part"], res["pro"], res["opp"]])
+        if not args.exp2:
+            for alpha in np.arange(args.alpha_low_bound, args.alpha_up_bound, args.alpha_interval):
+                for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
+                    np.random.seed(args.rnd_seed)
+                    res = replicate(args, alpha, mu, args.lambda_rival)
+                    out_writer.writerow([alpha, mu, args.lambda_rival, res["part"], res["pro"], res["opp"]])
+        else:
+            for lambda_rival in np.arange(args.lambda_low_bound, args.lambda_up_bound, args.lambda_interval):
+                for mu in np.arange(args.mu_low_bound, args.mu_up_bound, args.mu_interval):
+                    res = replicate(args, None, mu, lambda_rival)
+                    out_writer.writerow([None, mu, lambda_rival, res["part"], res["pro"], res["opp"]])
