@@ -16,7 +16,7 @@ class Plot3DArray:
         self.plotted_img_paths = []
 
 
-    def _plot_map(self, alpha, mu, z, z_label, z_fn, figure_size, rival, cmap):
+    def _plot_map(self, alpha, mu, z, z_label, z_fn, figure_size, cmap, exp2):
         """
         Resources:
             - plot_surface() example and old doc:
@@ -39,7 +39,10 @@ class Plot3DArray:
         ax.zaxis.set_major_locator(LinearLocator(5))
         ax.zaxis.set_major_formatter('{x:.02f}')
 
-        ax.set_xlabel(r"Cohensiveness ($\alpha$)")
+        if not exp2:
+            ax.set_xlabel(r"Cohensiveness ($\alpha$)")
+        else:
+            ax.set_xlabel(r"Rivalness ($\lambda$)")
         ax.set_xlim(0.0, 1.0)
         ax.xaxis.set_major_locator(LinearLocator(11))
         ax.xaxis.set_major_formatter('{x:.01f}')
@@ -73,27 +76,47 @@ class Plot3DArray:
         plt.close()
 
 
-    def plot_map(self, filename, cmap="gray", figure_size=13):
+    def plot_map(self, filename, cmap="gray", figure_size=13, exp2=False):
         filename_prefix = os.path.splitext(filename)[0]
-        lambda_rival = float(filename_prefix.split("_")[1])
         
         # process data
         file_df = pd.read_csv(filename)
-        file_df.sort_values(by=["alpha", "mu"], ascending=[True, True],
-                            ignore_index=True, inplace=True)
-        alpha = file_df["alpha"].to_numpy().reshape((50, 51))
-        mu = file_df["mu"].to_numpy().reshape((50, 51))
-        part = file_df["participation"].to_numpy().reshape((50, 51))
-        pro = file_df["promote"].to_numpy().reshape((50, 51))
-        opp = file_df["oppose"].to_numpy().reshape((50, 51))
+        
+        if not exp2:
+            lambda_rival = float(filename_prefix.split("_")[1])
+            file_df.sort_values(by=["alpha", "mu"], ascending=[True, True],
+                                ignore_index=True, inplace=True)
+            alpha = file_df["alpha"].to_numpy().reshape((50, 51))
+            mu = file_df["mu"].to_numpy().reshape((50, 51))
+            part = file_df["participation"].to_numpy().reshape((50, 51))
+            pro = file_df["promote"].to_numpy().reshape((50, 51))
+            opp = file_df["oppose"].to_numpy().reshape((50, 51))
 
-        # draw part
-        self._plot_map(alpha, mu, part, r"Participation", "part",
-                       figure_size=figure_size, rival=lambda_rival, cmap=cmap)
-        self._plot_map(alpha, mu, pro, r"Promoting", "pro",
-                       figure_size=figure_size, rival=lambda_rival, cmap=cmap)
-        self._plot_map(alpha, mu, opp, r"Opposing", "opp",
-                       figure_size=figure_size, rival=lambda_rival, cmap=cmap)
+            # draw part
+            self._plot_map(alpha, mu, part, r"Participation", "part",
+                        figure_size=figure_size, cmap=cmap, exp2=exp2)
+            self._plot_map(alpha, mu, pro, r"Promoting", "pro",
+                        figure_size=figure_size, cmap=cmap, exp2=exp2)
+            self._plot_map(alpha, mu, opp, r"Opposing", "opp",
+                        figure_size=figure_size, cmap=cmap, exp2=exp2)
+        else:
+            file_df.sort_values(by=["lambda", "mu"], ascending=[True, True],
+                                ignore_index=True, inplace=True)
+            lambda_rival_map = file_df["lambda"].to_numpy().reshape((51, 51))
+            mu = file_df["mu"].to_numpy().reshape((51, 51))
+            part = file_df["participation"].to_numpy().reshape((51, 51))
+            pro = file_df["promote"].to_numpy().reshape((51, 51))
+            opp = file_df["oppose"].to_numpy().reshape((51, 51))
+
+            # draw part
+            self._plot_map(lambda_rival_map, mu, part, r"Participation", "part",
+                        figure_size=figure_size, cmap=cmap, exp2=exp2)
+            self._plot_map(lambda_rival_map, mu, pro, r"Promoting", "pro",
+                        figure_size=figure_size, cmap=cmap, exp2=exp2)
+            self._plot_map(lambda_rival_map, mu, opp, r"Opposing", "opp",
+                        figure_size=figure_size, cmap=cmap, exp2=exp2)
+
+        
         
 
     def _save_fig(self, output_dir, fn):
@@ -108,8 +131,12 @@ class Plot3DArray:
 
 
 if __name__ == "__main__":
-    for rival in np.arange(0.0, 1.01, 0.1):
-        filename = "lambda_{:.1f}_rndSeed_1025_nRepli_10.csv".format(rival)
-        plotter = Plot3DArray()
-        plotter.plot_map(filename)
+    # for rival in np.arange(0.0, 1.01, 0.1):
+    #     filename = "lambda_{:.1f}_rndSeed_1025_nRepli_10.csv".format(rival)
+    #     plotter = Plot3DArray()
+    #     plotter.plot_map(filename)
+
+    filename = "exp2_rndSeed_1025_nRepli_10.csv"
+    plotter = Plot3DArray()
+    plotter.plot_map(filename, exp2=True)
     
